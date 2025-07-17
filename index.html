@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Expense Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Expense Tracker</h1>
+    <h2 id="balance-display">Loading...</h2>
+
+    <div id="init-balance" style="display: none;">
+      <input id="initial" placeholder="Enter initial balance" />
+      <button onclick="setInitialBalance()">Save Balance</button>
+    </div>
+
+    <form id="transaction-form">
+      <input type="text" id="text" placeholder="Transaction Name" required />
+      <input type="number" id="amount" placeholder="Amount" required />
+      <select id="type">
+        <option value="debit">Debit</option>
+        <option value="credit">Credit</option>
+      </select>
+      <button type="submit">Add Transaction</button>
+    </form>
+
+    <h3>Transaction History</h3>
+    <ul id="history"></ul>
+  </div>
+
+  <script>
+    const BASE = 'https://expense-tracker-u0n9.onrender.com'; // Change if using Render backend
+
+    const balanceEl = document.getElementById('balance-display');
+    const historyEl = document.getElementById('history');
+    const form = document.getElementById('transaction-form');
+    const initBox = document.getElementById('init-balance');
+
+    async function fetchBalance() {
+      const res = await fetch(`${BASE}/balance`);
+      const data = await res.json();
+      if (!data) {
+        balanceEl.innerText = 'Please enter your balance';
+        initBox.style.display = 'block';
+      } else {
+        balanceEl.innerText = `Balance: ₹${data.amount.toFixed(2)}`;
+        initBox.style.display = 'none';
+      }
+    }
+
+    async function setInitialBalance() {
+      const val = parseFloat(document.getElementById('initial').value);
+      if (!isNaN(val)) {
+        await fetch(`${BASE}/balance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: val })
+        });
+        fetchBalance();
+      }
+    }
+
+    async function loadTransactions() {
+      const res = await fetch(`${BASE}/transactions`);
+      const data = await res.json();
+
+      historyEl.innerHTML = '';
+      data.forEach(tx => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span>${tx.text} - ₹${tx.amount} (${tx.type})</span>
+          <span class="buttons">
+            <button onclick="editTx('${tx._id}', '${tx.text}', ${tx.amount}, '${tx.type}')">✏️</button>
+            <button onclick="deleteTx('${tx._id}')">❌</button>
+          </span>
+        `;
+        historyEl.appendChild(li);
+      });
+    }
+
+    async function deleteTx(id) {
+      await fetch(`${BASE}/transactions/${id}`, { method: 'DELETE' });
+      fetchBalance();
+      loadTransactions();
+    }
+
+    async function editTx(id, text, amount, type) {
+      const newText = prompt("Edit name", text);
+      const newAmount = parseFloat(prompt("Edit amount", amount));
+      const newType = prompt("Edit type (credit/debit)", type);
+
+      if (newText && !isNaN(newAmount) && (newType === 'credit' || newType === 'debit')) {
+        await fetch(`${BASE}/transactions/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: newText, amount: newAmount, type: newType })
+        });
+        fetchBalance();
+        loadTransactions();
+      }
+    }
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const text = document.getElementById('text').value;
+      const amount = parseFloat(document.getElementById('amount').value);
+      const type = document.getElementById('type').value;
+
+      await fetch(`${BASE}/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, amount, type })
+      });
+
+      fetchBalance();
+      loadTransactions();
+      form.reset();
+    });
+
+    fetchBalance();
+    loadTransactions();
+  </script>
+</body>
+</html>
