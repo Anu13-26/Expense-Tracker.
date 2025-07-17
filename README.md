@@ -51,11 +51,6 @@ DB_NAME=your_database_name
 # App Settings
 PORT=5000  # Or any port you want to run the server on
 ```
-
-# Folder Structure
-```bash
-
-
 In your code, you can use these to construct your MONGO_URI.
 
 # Run the backend
